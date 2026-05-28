@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CCMPSAR Operations Risk Sign-off</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'spin': 'spin 1s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased selection:bg-red-200 selection:text-red-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- Inline SVG Icons (Replacing lucide-react to work natively in browser) ---
+        const IconBase = ({ children, size = 24, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>
+        );
+
+        const ClipboardCheck = (props) => <IconBase {...props}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="m9 14 2 2 4-4"/></IconBase>;
+        const List = (props) => <IconBase {...props}><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></IconBase>;
+        const AlertTriangle = (props) => <IconBase {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></IconBase>;
+        const ShieldAlert = (props) => <IconBase {...props}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+        const PenTool = (props) => <IconBase {...props}><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></IconBase>;
+        const Save = (props) => <IconBase {...props}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></IconBase>;
+        const MapPin = (props) => <IconBase {...props}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></IconBase>;
+        const Calendar = (props) => <IconBase {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></IconBase>;
+        const User = (props) => <IconBase {...props}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></IconBase>;
+        const ChevronDown = (props) => <IconBase {...props}><polyline points="6 9 12 15 18 9"/></IconBase>;
+        const Info = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></IconBase>;
+        const Loader2 = (props) => <IconBase {...props} className={`animate-spin ${props.className || ''}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase>;
+        const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></IconBase>;
+
+        // --- Real Data from Provided Risk Assessments ---
+        const availableAssessments = [
+          { 
+            id: 'ra-19', 
+            title: 'Water Call Outs', 
+            docNo: '19', 
+            riskBefore: 'HIGH (H)',
+            riskAfter: 'HIGH (H)',
+            hazards: 'Injury, Illness, Fatality',
+            peopleAtRisk: 'Volunteers, Public',
+            requiresPortOps: false,
+            specialNote: 'Note: The residual risk remains HIGH because the inherent danger of the water environment cannot be removed. However, by strictly adhering to every precaution and control measure listed below, the likelihood of an incident occurring is significantly reduced.',
+            controls: [
+              "Training and competency",
+              "Call out leader and/or Dive Officer to assess if it is safe to access water",
+              "Ensure all equipment and vehicles are safe and prepared for use",
+              "Conduct all equipment and vehicle checks",
+              "Complete all necessary reports/forms for call out",
+              "Review the call out with team",
+              "Coordination and communication with emergency services",
+              "Means of communication established between team",
+              "Safe plan of action for the call out",
+              "Necessary PPE donned",
+              "Check water conditions and weather",
+              "Ensure emergency response plan is in place for volunteers",
+              "Ensure warm clothes and blankets are provided after leaving water",
+              "Separate PPE and equipment that requires special cleaning following a call out"
+            ]
+          },
+          { 
+            id: 'ra-20', 
+            title: 'Land Call Outs', 
+            docNo: '20', 
+            riskBefore: 'HIGH (H)',
+            riskAfter: 'MEDIUM (M)',
+            hazards: 'Injury, Illness, Fatality',
+            peopleAtRisk: 'Volunteers',
+            requiresPortOps: false,
+            specialNote: null,
+            controls: [
+              "Training & Competency",
+              "Equipment and vehicles in good working order and safe to use",
+              "Complete all necessary checks before call out",
+              "Wear necessary PPE",
+              "Complete all necessary reports/forms for call out",
+              "Review the call out with team",
+              "Coordination and communication with emergency services",
+              "Means of communication established between team",
+              "Safe plan of action for the call out",
+              "Ensure emergency response plan is in place for volunteers",
+              "Ensure warm clothes and blankets are provided after call out",
+              "Check weather conditions",
+              "Be aware of slips, trips, and falling hazards from uneven ground"
+            ]
+          },
+          { 
+            id: 'ra-21', 
+            title: 'Diving', 
+            docNo: '21', 
+            riskBefore: 'HIGH (H)',
+            riskAfter: 'MEDIUM (M)',
+            hazards: 'Drowning, Injury, Fatality',
+            peopleAtRisk: 'Volunteers',
+            requiresPortOps: true, // FLAG ADDED HERE FOR DIVING
+            specialNote: null,
+            controls: [
+              "Review weather conditions",
+              "Review water conditions",
+              "Dive Officer to assess the environment and determine if it is safe to dive",
+              "Trained and competent divers only to enter water",
+              "Establish a means of communication with Dive Officer",
+              "Complete all necessary checks on equipment",
+              "Only use equipment that is in good working order and fit for the task",
+              "Report any defective or damaged equipment and remove from use until it is repaired",
+              "Ensure tanks are filled, and valves are working correctly",
+              "Wear appropriate PPE",
+              "If conditions change, stop and reassess",
+              "Ensure warm clean clothes and blankets are available for divers following call out",
+              "Separate all clothing, equipment, PPE that requires special cleaning",
+              "Emergency response on standby"
+            ]
+          }
+        ];
+
+        // --- Signature Pad Component ---
+        const SignaturePad = ({ onSave, resetTrigger }) => {
+            const canvasRef = useRef(null);
+            const [isDrawing, setIsDrawing] = useState(false);
+            const [hasSignature, setHasSignature] = useState(false);
+
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                
+                const resizeCanvas = () => {
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = rect.width;
+                    canvas.height = 180;
+                    const ctx = canvas.getContext('2d');
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.strokeStyle = '#0f172a'; 
+                    ctx.lineWidth = 2;
+                };
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                return () => window.removeEventListener('resize', resizeCanvas);
+            }, []);
+
+            useEffect(() => {
+                clearSignature();
+            }, [resetTrigger]);
+
+            const getPos = (e) => {
+                const canvas = canvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            };
+
+            const startDrawing = (e) => {
+                e.preventDefault();
+                setIsDrawing(true);
+                const pos = getPos(e);
+                const ctx = canvasRef.current.getContext('2d');
+                ctx.beginPath();
+                ctx.moveTo(pos.x, pos.y);
+            };
+
+            const draw = (e) => {
+                e.preventDefault();
+                if (!isDrawing) return;
+                const pos = getPos(e);
+                const ctx = canvasRef.current.getContext('2d');
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                if (!hasSignature) setHasSignature(true);
+            };
+
+            const stopDrawing = (e) => {
+                e.preventDefault();
+                if (isDrawing) {
+                    setIsDrawing(false);
+                    if (canvasRef.current) {
+                        onSave(canvasRef.current.toDataURL('image/png'));
+                    }
+                }
+            };
+
+            const clearSignature = (e) => {
+                if(e) e.preventDefault();
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                setHasSignature(false);
+                onSave('');
+            };
+
+            return (
+                <div className="w-full">
+                    <div className="relative border-2 border-dashed border-slate-300 rounded-xl bg-white overflow-hidden touch-none">
+                        <canvas
+                            ref={canvasRef}
+                            className="w-full h-[180px] cursor-crosshair touch-none"
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                            onMouseLeave={stopDrawing}
+                            onTouchStart={startDrawing}
+                            onTouchMove={draw}
+                            onTouchEnd={stopDrawing}
+                        />
+                        {!hasSignature && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 text-sm font-medium">
+                                Sign here
+                            </div>
+                        )}
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                        <button 
+                            type="button" 
+                            onClick={clearSignature} 
+                            className="text-xs text-red-600 hover:text-red-700 font-medium px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                        >
+                            Clear Signature
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Main App Component ---
+        function App() {
+          const [currentView, setCurrentView] = useState('list');
+          const [activeAssessmentId, setActiveAssessmentId] = useState(null);
+          const [resetTrigger, setResetTrigger] = useState(0);
+          
+          const [formData, setFormData] = useState({
+            date: new Date().toISOString().split('T')[0],
+            location: '',
+            signeeName: ''
+          });
+          const [signatureData, setSignatureData] = useState('');
+          const [portOpsContacted, setPortOpsContacted] = useState(''); // Tracking Port Ops state
+          
+          const [formError, setFormError] = useState('');
+          
+          // Submission States
+          const [isSubmitting, setIsSubmitting] = useState(false);
+          const [showSuccess, setShowSuccess] = useState(false);
+          const formRef = useRef(null);
+          const isSubmittingRef = useRef(false);
+
+          const activeAssessment = availableAssessments.find(a => a.id === activeAssessmentId);
+
+          const handleInputChange = (e) => {
+            const { name, value } = e.target;
+            setFormData(prev => ({ ...prev, [name]: value }));
+          };
+
+          const handleStartAssessment = (id) => {
+            setActiveAssessmentId(id);
+            setCurrentView('form');
+            setFormData({
+              date: new Date().toISOString().split('T')[0],
+              location: '',
+              signeeName: ''
+            });
+            setSignatureData('');
+            setPortOpsContacted(''); // Reset Port Ops
+            setResetTrigger(prev => prev + 1);
+            setFormError('');
+            setShowSuccess(false);
+            window.scrollTo(0, 0);
+          };
+
+          const handleSubmit = (e) => {
+            e.preventDefault();
+            setFormError('');
+
+            // Basic Validation
+            if (!formData.date || !formData.location || !formData.signeeName) {
+              setFormError('Please fill in all details (Date, Location, Name).');
+              return;
+            }
+
+            // Port Ops Validation specifically for Diving
+            if (activeAssessment?.requiresPortOps && portOpsContacted !== 'Yes') {
+              setFormError('You must confirm that Port Ops have been contacted before proceeding.');
+              return;
+            }
+
+            // Signature Validation
+            if (!signatureData) {
+              setFormError('Please provide a signature before submitting.');
+              return;
+            }
+
+            // Trigger the hidden Jotform submission
+            setIsSubmitting(true);
+            isSubmittingRef.current = true;
+            
+            setTimeout(() => {
+                if (formRef.current) {
+                    formRef.current.submit();
+                }
+            }, 100);
+          };
+
+          const handleIframeLoad = () => {
+            if (isSubmittingRef.current) {
+                setIsSubmitting(false);
+                isSubmittingRef.current = false;
+                setShowSuccess(true);
+                
+                setTimeout(() => {
+                    setShowSuccess(false);
+                    setCurrentView('list');
+                    setActiveAssessmentId(null);
+                }, 3000);
+            }
+          };
+
+          // Data formatting for Jotform inputs
+          const [year, month, day] = formData.date.split('-');
+          const nameParts = formData.signeeName.trim().split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          const completedText = activeAssessment ? `${activeAssessment.title} (Doc No. ${activeAssessment.docNo})` : '';
+
+          return (
+            <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20 md:pb-0 flex flex-col">
+              
+              {/* Hidden iframe for background submission */}
+              <iframe 
+                name="jotform_iframe" 
+                id="jotform_iframe" 
+                title="jotform_iframe" 
+                style={{ display: 'none' }} 
+                onLoad={handleIframeLoad} 
+              ></iframe>
+
+              {/* Hidden Form targeting the iframe */}
+              <form 
+                ref={formRef}
+                action="https://submit.jotform.com/submit/261477150616053" 
+                method="post" 
+                target="jotform_iframe"
+                style={{ display: 'none' }}
+              >
+                <input type="hidden" name="formID" value="261477150616053" />
+                <input type="hidden" name="simple_spc" value="261477150616053-261477150616053" />
+                
+                <input type="hidden" name="q2_q2_datetime0[day]" value={day || ''} />
+                <input type="hidden" name="q2_q2_datetime0[month]" value={month || ''} />
+                <input type="hidden" name="q2_q2_datetime0[year]" value={year || ''} />
+                <input type="hidden" name="q3_q3_textbox1" value={formData.location} />
+                <input type="hidden" name="q4_q4_fullname2[first]" value={firstName} />
+                <input type="hidden" name="q4_q4_fullname2[last]" value={lastName} />
+                <input type="hidden" name="q8_assesmentCompleted" value={completedText} />
+                <input type="hidden" name="q9_portOps" value={portOpsContacted} /> {/* PORT OPS DATA */}
+                <input type="hidden" name="q5_q5_radio3" value="Yes" />
+                <input type="hidden" name="q6_q6_signature4" value={signatureData} />
+              </form>
+
+              {/* LOADING OVERLAY */}
+              {isSubmitting && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/60 backdrop-blur-sm px-6">
+                    <div className="bg-white p-8 rounded-2xl flex flex-col items-center text-center shadow-2xl border border-slate-200 w-full max-w-sm">
+                        <Loader2 className="w-12 h-12 text-red-700 mb-4" />
+                        <h2 className="text-xl font-bold text-slate-800 mb-2">Submitting Assessment...</h2>
+                        <p className="text-slate-500 text-sm">Please wait while your signature is securely recorded.</p>
+                    </div>
+                </div>
+              )}
+
+              <header className="bg-red-700 text-white shadow-md sticky top-0 z-10 flex-shrink-0">
+                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between w-full">
+                  <div>
+                    <h1 className="text-xl md:text-2xl font-bold tracking-tight">CCMPSAR</h1>
+                    <p className="text-red-100 text-sm">Operations Risk Sign-off</p>
+                  </div>
+                  <div className="flex bg-red-800 rounded-lg p-1">
+                    <button 
+                      onClick={() => {
+                        setCurrentView('list');
+                        setActiveAssessmentId(null);
+                      }}
+                      className={`p-2 rounded-md flex items-center transition-colors ${currentView === 'list' || currentView === 'form' ? 'bg-white text-red-700 shadow' : 'text-red-100 hover:bg-red-600'}`}
+                    >
+                      <ClipboardCheck className="w-5 h-5" />
+                      <span className="ml-2 hidden md:inline font-medium">Forms</span>
+                    </button>
+                  </div>
+                </div>
+              </header>
+
+              <main className="max-w-4xl mx-auto px-4 py-6 relative flex-grow w-full">
+                
+                {/* SUCCESS MESSAGE */}
+                {showSuccess && (
+                    <div className="absolute inset-0 z-40 bg-slate-50 flex flex-col items-center pt-20 px-4">
+                        <div className="bg-green-50 rounded-full w-24 h-24 flex items-center justify-center mb-6">
+                            <CheckCircle className="w-12 h-12 text-green-600" />
+                        </div>
+                        <h2 className="text-2xl font-bold text-slate-800 mb-2 text-center">Successfully Signed Off!</h2>
+                        <p className="text-slate-500 text-center max-w-md">Your risk assessment has been securely recorded.</p>
+                    </div>
+                )}
+
+                {currentView === 'list' && !showSuccess && (
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6">
+                      <div className="flex items-center mb-2">
+                        <ShieldAlert className="w-6 h-6 text-red-600 mr-2" />
+                        <h2 className="text-xl font-bold text-slate-800">Available Risk Assessments</h2>
+                      </div>
+                      <p className="text-slate-600">Select the relevant operational document below to review the hazards, required controls, and complete your secure sign-off.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availableAssessments.map((assessment) => (
+                        <div 
+                          key={assessment.id}
+                          onClick={() => handleStartAssessment(assessment.id)}
+                          className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 hover:border-red-400 hover:shadow-md cursor-pointer transition-all group flex flex-col h-full"
+                        >
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-3">
+                              <h3 className="font-bold text-lg text-slate-800 group-hover:text-red-700 transition-colors">
+                                {assessment.title}
+                              </h3>
+                              <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded">
+                                No. {assessment.docNo}
+                              </span>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4 line-clamp-2">
+                              <span className="font-semibold">Hazards:</span> {assessment.hazards}
+                            </p>
+                          </div>
+                          
+                          <div className="mt-auto pt-4 border-t border-slate-100">
+                            <button className="w-full bg-slate-50 group-hover:bg-red-50 text-slate-700 group-hover:text-red-700 font-medium py-2 rounded-lg transition-colors flex items-center justify-center">
+                              <PenTool className="w-4 h-4 mr-2" />
+                              Review & Sign Off
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {currentView === 'form' && activeAssessment && !showSuccess && (
+                  <div className="space-y-6">
+                    
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentView('list')}
+                      className="flex items-center text-slate-500 hover:text-slate-800 transition-colors font-medium text-sm mb-2"
+                    >
+                      <ChevronDown className="w-4 h-4 rotate-90 mr-1" />
+                      Back to Documents
+                    </button>
+                    
+                    {formError && (
+                      <div className="bg-red-50 text-red-800 p-4 rounded-xl shadow-sm flex items-center border border-red-200">
+                        <AlertTriangle className="w-5 h-5 mr-3 flex-shrink-0" />
+                        <span className="font-medium">{formError}</span>
+                      </div>
+                    )}
+
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                      <div className="bg-slate-100 px-4 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between">
+                        <div>
+                          <h2 className="text-xl font-bold text-slate-800">{activeAssessment.title}</h2>
+                          <p className="text-sm text-slate-500">Document No. {activeAssessment.docNo}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="p-5 md:p-6">
+                        <div className="flex items-center justify-between mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner">
+                          <div className="flex flex-col items-center text-center w-1/3">
+                            <span className="text-[11px] uppercase text-slate-500 font-bold mb-1.5">Risk Before</span>
+                            <span className="font-bold text-white bg-red-600 px-3 py-1.5 rounded text-sm shadow-sm">{activeAssessment.riskBefore}</span>
+                          </div>
+                          
+                          <div className="flex-1 flex flex-col items-center justify-center px-4">
+                            <span className="text-[11px] uppercase text-slate-500 font-bold mb-1.5 text-center">If Controls Applied</span>
+                            <div className="w-full border-t-2 border-dashed border-slate-300 relative">
+                              <div className="absolute top-1/2 right-0 transform translate-x-1/2 -translate-y-1/2">
+                                <div className="w-2.5 h-2.5 border-t-2 border-r-2 border-slate-400 transform rotate-45"></div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col items-center text-center w-1/3">
+                            <span className="text-[11px] uppercase text-slate-500 font-bold mb-1.5">Residual Risk</span>
+                            <span className={`font-bold px-3 py-1.5 rounded text-sm text-white shadow-sm ${
+                              activeAssessment.riskAfter.includes('MEDIUM') 
+                                ? 'bg-yellow-500' 
+                                : 'bg-red-600'
+                            }`}>
+                              {activeAssessment.riskAfter}
+                            </span>
+                          </div>
+                        </div>
+
+                        {activeAssessment.specialNote && (
+                          <div className="mb-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
+                            <div className="flex">
+                              <Info className="w-5 h-5 text-blue-500 mr-3 flex-shrink-0 mt-0.5" />
+                              <p className="text-sm text-blue-900 font-medium">
+                                {activeAssessment.specialNote}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">Hazards / Risks</span>
+                            <p className="text-base font-medium text-slate-800">{activeAssessment.hazards}</p>
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-1">People at Risk</span>
+                            <p className="text-base font-medium text-slate-800">{activeAssessment.peopleAtRisk}</p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">Required Control Measures to Implement</span>
+                          <ul className="space-y-2 bg-white p-4 rounded-xl border border-slate-200">
+                            {activeAssessment.controls.map((control, idx) => (
+                              <li key={idx} className="text-sm text-slate-700 flex items-start">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 mt-2 mr-3 flex-shrink-0"></span>
+                                <span className="leading-relaxed">{control}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* --- CONDITIONAL PORT OPS CHECK --- */}
+                        {activeAssessment.requiresPortOps && (
+                          <div className="mt-8 p-5 bg-orange-50 border border-orange-200 rounded-xl">
+                            <label className="flex items-center text-sm font-bold text-orange-900 mb-3 uppercase tracking-wider">
+                              <AlertTriangle className="w-4 h-4 mr-2" /> Mandatory Pre-Dive Check
+                            </label>
+                            <p className="text-sm text-orange-800 mb-3">Have Port Operations been contacted prior to this dive?</p>
+                            <label className="flex items-center space-x-3 cursor-pointer group p-3 bg-white border border-orange-100 rounded-lg shadow-sm hover:border-orange-300 transition-all">
+                              <input 
+                                type="checkbox" 
+                                checked={portOpsContacted === 'Yes'}
+                                onChange={(e) => setPortOpsContacted(e.target.checked ? 'Yes' : '')}
+                                className="w-5 h-5 text-red-600 rounded border-slate-300 focus:ring-red-500"
+                              />
+                              <span className="text-sm font-bold text-slate-800">Yes, Port Ops have been contacted.</span>
+                            </label>
+                          </div>
+                        )}
+
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden relative">
+                      <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center text-white">
+                        <PenTool className="w-5 h-5 mr-2" />
+                        <h2 className="font-semibold">Authorisation & Sign-off</h2>
+                      </div>
+                      
+                      <div className="p-5 md:p-6 space-y-5">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-slate-700 flex items-center">
+                              <Calendar className="w-4 h-4 mr-2 text-slate-400" /> Date
+                            </label>
+                            <input 
+                              type="date" 
+                              name="date"
+                              value={formData.date}
+                              onChange={handleInputChange}
+                              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-slate-50"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <label className="block text-sm font-medium text-slate-700 flex items-center">
+                              <MapPin className="w-4 h-4 mr-2 text-slate-400" /> Location
+                            </label>
+                            <input 
+                              type="text" 
+                              name="location"
+                              value={formData.location}
+                              onChange={handleInputChange}
+                              placeholder="e.g., River Lee, Cork"
+                              className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-slate-700 flex items-center">
+                            <User className="w-4 h-4 mr-2 text-slate-400" /> Print Name
+                          </label>
+                          <input 
+                            type="text" 
+                            name="signeeName"
+                            value={formData.signeeName}
+                            onChange={handleInputChange}
+                            placeholder="Volunteer Name"
+                            className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none"
+                          />
+                        </div>
+
+                        <div className="space-y-2 pt-2">
+                          <label className="block text-sm font-medium text-slate-700 flex items-center">
+                            <PenTool className="w-4 h-4 mr-2 text-slate-400" /> Signature
+                          </label>
+                          <div className="p-3 bg-red-50 border border-red-100 rounded-lg mb-3">
+                            <p className="text-sm font-semibold text-red-900">
+                              I confirm I have read the hazards and understand the risks for the selected operation. I understand that by strictly adhering to all control measures, the likelihood of an incident is minimised. I agree to implement all required precautions.
+                            </p>
+                          </div>
+                          <SignaturePad onSave={setSignatureData} resetTrigger={resetTrigger} />
+                        </div>
+
+                        <div className="pt-4 border-t border-slate-100">
+                          <button 
+                            onClick={handleSubmit}
+                            className="w-full bg-red-700 hover:bg-red-800 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center transition-colors focus:ring-4 focus:ring-red-200 outline-none shadow-sm"
+                          >
+                            <Save className="w-5 h-5 mr-2" />
+                            Submit & Send to Jotform
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </main>
+              
+              {/* FOOTER */}
+              <footer className="mt-auto py-6 border-t border-slate-200 text-center text-slate-500 text-sm bg-slate-50 relative z-10 flex-shrink-0">
+                <p>&copy; {new Date().getFullYear()} CCMPSAR. Created by Dave Maher.</p>
+              </footer>
+            </div>
+          );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
