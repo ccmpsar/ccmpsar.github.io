@@ -348,7 +348,7 @@
           const completedText = activeAssessment ? `${activeAssessment.title} (Doc No. ${activeAssessment.docNo})` : '';
 
           return (
-            <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20 md:pb-0">
+            <div className="min-h-screen bg-slate-50 text-slate-900 font-sans pb-20 md:pb-0 flex flex-col">
               
               {/* Hidden iframe for background submission */}
               <iframe 
@@ -393,8 +393,8 @@
                 </div>
               )}
 
-              <header className="bg-red-700 text-white shadow-md sticky top-0 z-10">
-                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+              <header className="bg-red-700 text-white shadow-md sticky top-0 z-10 flex-shrink-0">
+                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between w-full">
                   <div>
                     <h1 className="text-xl md:text-2xl font-bold tracking-tight">CCMPSAR</h1>
                     <p className="text-red-100 text-sm">Operations Risk Sign-off</p>
@@ -414,7 +414,7 @@
                 </div>
               </header>
 
-              <main className="max-w-4xl mx-auto px-4 py-6 relative">
+              <main className="max-w-4xl mx-auto px-4 py-6 relative flex-grow w-full">
                 
                 {/* SUCCESS MESSAGE */}
                 {showSuccess && (
@@ -548,7 +548,7 @@
                         </div>
                         
                         <div>
-                          <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">Required Control Measures to Implement</span>
+                            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block mb-3">Required Control Measures to Implement</span>
                           <ul className="space-y-2 bg-white p-4 rounded-xl border border-slate-200">
                             {activeAssessment.controls.map((control, idx) => (
                               <li key={idx} className="text-sm text-slate-700 flex items-start">
@@ -658,6 +658,11 @@
                 )}
 
               </main>
+              
+              {/* FOOTER */}
+              <footer className="mt-auto py-6 border-t border-slate-200 text-center text-slate-500 text-sm bg-slate-50 relative z-10 flex-shrink-0">
+                <p>&copy; {new Date().getFullYear()} CCMPSAR. Created by Dave Maher.</p>
+              </footer>
             </div>
           );
         }
